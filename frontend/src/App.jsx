@@ -21,6 +21,7 @@ import {
   WelfareManagement,
   Payments,
   Communications,
+  CityStateManagement,
   ReportsSettings,
 } from "./adminPages";
 import {
@@ -75,6 +76,7 @@ function App() {
         <Route path="/admin/welfare" element={<WelfareManagement />} />
         <Route path="/admin/payments" element={<Payments />} />
         <Route path="/admin/communications" element={<Communications />} />
+        <Route path="/admin/locations" element={<CityStateManagement />} />
         <Route path="/admin/reports" element={<ReportsSettings />} />
 <Route path="/nearby" element={<NearbyRadar />} />
         {/* Fallback */}

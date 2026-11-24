@@ -32,6 +32,7 @@ import {
   ChevronRight,
   Building2,
   CalendarDays,
+  MapPin,
 } from "lucide-react";
 
 const adminNavigation = [
@@ -43,6 +44,7 @@ const adminNavigation = [
   { label: "Welfare", path: "/admin/welfare", icon: HandHeart },
   { label: "Payments", path: "/admin/payments", icon: CreditCard },
   { label: "Communications", path: "/admin/communications", icon: MessageSquare },
+  { label: "Admin Hierarchy", path: "/admin/locations", icon: MapPin },
   { label: "Reports & Settings", path: "/admin/reports", icon: BarChart3 },
 ];
 
@@ -1030,6 +1032,483 @@ export function Payments() {
 
 export function Communications() {
   return <ResourcePage type="communications" />;
+}
+
+const cityAdmins = [
+  { id: "ADM-001", name: "Arjun Reddy", email: "arjun.admin@example.com" },
+  { id: "ADM-002", name: "Priya Sharma", email: "priya.admin@example.com" },
+  { id: "ADM-003", name: "Rahul Varma", email: "rahul.admin@example.com" },
+  { id: "ADM-004", name: "Sneha Kumar", email: "sneha.admin@example.com" },
+  { id: "ADM-005", name: "Vikram Rao", email: "vikram.admin@example.com" },
+  { id: "ADM-006", name: "Meera Patel", email: "meera.admin@example.com" },
+];
+
+const stateAdmins = [
+  { id: "STATE-001", name: "Sravani Rao", email: "sravani.admin@example.com" },
+  { id: "STATE-002", name: "Naveen Reddy", email: "naveen.admin@example.com" },
+  { id: "STATE-003", name: "Lakshmi Devi", email: "lakshmi.admin@example.com" },
+  { id: "STATE-004", name: "Deepa Kumar", email: "deepa.admin@example.com" },
+  { id: "STATE-005", name: "Amit Patel", email: "amit.admin@example.com" },
+];
+
+const initialStateAdminAssignments = [
+  { state: "Andhra Pradesh", adminId: "STATE-001" },
+  { state: "Telangana", adminId: "STATE-002" },
+  { state: "Tamil Nadu", adminId: "STATE-003" },
+  { state: "Karnataka", adminId: "STATE-004" },
+  { state: "Maharashtra", adminId: "STATE-005" },
+];
+
+const initialCityAssignments = [
+  { id: "CITY-001", state: "Andhra Pradesh", city: "Nellore", adminId: "ADM-001", activity: { members: 8, verifications: 2, events: 1, welfare: 1 } },
+  { id: "CITY-002", state: "Andhra Pradesh", city: "Tirupati", adminId: "ADM-002", activity: { members: 5, verifications: 1, events: 2, welfare: 1 } },
+  { id: "CITY-003", state: "Andhra Pradesh", city: "Visakhapatnam", adminId: "ADM-003", activity: { members: 12, verifications: 3, events: 2, welfare: 2 } },
+  { id: "CITY-004", state: "Telangana", city: "Hyderabad", adminId: "ADM-004", activity: { members: 18, verifications: 4, events: 3, welfare: 2 } },
+  { id: "CITY-005", state: "Telangana", city: "Warangal", adminId: "ADM-005", activity: { members: 6, verifications: 1, events: 1, welfare: 1 } },
+  { id: "CITY-006", state: "Tamil Nadu", city: "Chennai", adminId: "ADM-006", activity: { members: 15, verifications: 3, events: 2, welfare: 2 } },
+  { id: "CITY-007", state: "Tamil Nadu", city: "Coimbatore", adminId: "ADM-002", activity: { members: 7, verifications: 2, events: 1, welfare: 1 } },
+  { id: "CITY-008", state: "Karnataka", city: "Bengaluru", adminId: "ADM-003", activity: { members: 20, verifications: 5, events: 4, welfare: 2 } },
+  { id: "CITY-009", state: "Karnataka", city: "Mysuru", adminId: "ADM-004", activity: { members: 5, verifications: 1, events: 1, welfare: 0 } },
+  { id: "CITY-010", state: "Maharashtra", city: "Mumbai", adminId: "ADM-005", activity: { members: 16, verifications: 4, events: 3, welfare: 2 } },
+  { id: "CITY-011", state: "Maharashtra", city: "Pune", adminId: "ADM-006", activity: { members: 9, verifications: 2, events: 2, welfare: 1 } },
+];
+
+export function CityStateManagement() {
+  const [assignments, setAssignments] = useState(initialCityAssignments);
+  const [stateAdminAssignments, setStateAdminAssignments] = useState(
+    initialStateAdminAssignments
+  );
+  const [previewRole, setPreviewRole] = useState("main");
+  const [selectedState, setSelectedState] = useState("Andhra Pradesh");
+  const [selectedCityId, setSelectedCityId] = useState("CITY-001");
+  const [search, setSearch] = useState("");
+  const [notice, setNotice] = useState("");
+
+  const states = useMemo(
+    () => [...new Set(assignments.map((assignment) => assignment.state))].sort(),
+    [assignments]
+  );
+
+  const citiesInSelectedState = assignments.filter(
+    (assignment) => assignment.state === selectedState
+  );
+
+  const visibleAssignments = assignments.filter((assignment) => {
+    if (previewRole === "main") return true;
+    if (assignment.state !== selectedState) return false;
+    return previewRole !== "city" || assignment.id === selectedCityId;
+  });
+
+  const filteredAssignments = useMemo(() => {
+    const query = search.trim().toLowerCase();
+
+    return visibleAssignments.filter((assignment) => {
+      const admin = cityAdmins.find((item) => item.id === assignment.adminId);
+      const matchesSearch =
+        !query ||
+        `${assignment.city} ${assignment.state} ${admin?.name ?? ""} ${admin?.email ?? ""}`
+          .toLowerCase()
+          .includes(query);
+
+      return matchesSearch;
+    });
+  }, [visibleAssignments, search]);
+
+  const updateCityAdmin = (cityId, adminId) => {
+    const assignment = assignments.find((item) => item.id === cityId);
+    const admin = cityAdmins.find((item) => item.id === adminId);
+    if (!assignment || !admin || previewRole === "city") return;
+
+    setAssignments((current) =>
+      current.map((item) =>
+        item.id === cityId ? { ...item, adminId } : item
+      )
+    );
+    setNotice(`${admin.name} is now assigned to ${assignment.city}.`);
+  };
+
+  const updateStateAdmin = (state, adminId) => {
+    const admin = stateAdmins.find((item) => item.id === adminId);
+    if (!admin || previewRole !== "main") return;
+
+    setStateAdminAssignments((current) =>
+      current.map((assignment) =>
+        assignment.state === state ? { ...assignment, adminId } : assignment
+      )
+    );
+    setNotice(`${admin.name} is now assigned to ${state}.`);
+  };
+
+  const handleStateChange = (state) => {
+    setSelectedState(state);
+    const firstCity = assignments.find((assignment) => assignment.state === state);
+    if (firstCity) setSelectedCityId(firstCity.id);
+  };
+
+  const selectedCity =
+    assignments.find((assignment) => assignment.id === selectedCityId) ??
+    citiesInSelectedState[0];
+  const roleHeading =
+    previewRole === "main"
+      ? "Main Admin · All states and cities"
+      : previewRole === "state"
+        ? `State Admin · ${selectedState}`
+        : `City Admin · ${selectedCity?.city ?? selectedState}`;
+  const totals = visibleAssignments.reduce(
+    (result, assignment) => ({
+      members: result.members + assignment.activity.members,
+      verifications: result.verifications + assignment.activity.verifications,
+      events: result.events + assignment.activity.events,
+      welfare: result.welfare + assignment.activity.welfare,
+    }),
+    { members: 0, verifications: 0, events: 0, welfare: 0 }
+  );
+  const visibleStates = [...new Set(visibleAssignments.map((item) => item.state))];
+  const managementAreas = [
+    { label: "Members & approvals", path: "/admin/members", icon: Users },
+    { label: "Identity verifications", path: "/admin/verification", icon: ShieldCheck },
+    { label: "Events & content", path: "/admin/content", icon: CalendarDays },
+    { label: "Welfare requests", path: "/admin/welfare", icon: HandHeart },
+    { label: "Payments", path: "/admin/payments", icon: CreditCard },
+    { label: "Communications", path: "/admin/communications", icon: MessageSquare },
+  ];
+
+  return (
+    <AdminShell
+      title="Admin Hierarchy"
+      description="Preview the main, state, and city administration structure"
+      icon={MapPin}
+    >
+      <div className="mb-7">
+        <p className="text-xs font-bold uppercase tracking-[0.18em] text-indigo-600">
+          Administration overview
+        </p>
+        <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-900">
+          Main Admin → State Admin → City Admin
+        </h2>
+        <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+          Review activity across the organization or preview the responsibilities
+          and city operations visible at each level.
+        </p>
+      </div>
+
+      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="grid gap-4 md:grid-cols-3">
+          <label>
+            <span className="mb-2 block text-sm font-semibold text-slate-700">
+              Preview role
+            </span>
+            <select
+              value={previewRole}
+              onChange={(event) => setPreviewRole(event.target.value)}
+              className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-indigo-400"
+            >
+              <option value="main">Main Admin</option>
+              <option value="state">State Admin</option>
+              <option value="city">City Admin</option>
+            </select>
+          </label>
+          {previewRole !== "main" && (
+            <label>
+              <span className="mb-2 block text-sm font-semibold text-slate-700">
+                State
+              </span>
+              <select
+                value={selectedState}
+                onChange={(event) => handleStateChange(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-indigo-400"
+              >
+                {states.map((state) => (
+                  <option key={state}>{state}</option>
+                ))}
+              </select>
+            </label>
+          )}
+          {previewRole === "city" && (
+            <label>
+              <span className="mb-2 block text-sm font-semibold text-slate-700">
+                City
+              </span>
+              <select
+                value={selectedCity?.id ?? ""}
+                onChange={(event) => setSelectedCityId(event.target.value)}
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 outline-none focus:border-indigo-400"
+              >
+                {citiesInSelectedState.map((assignment) => (
+                  <option key={assignment.id} value={assignment.id}>
+                    {assignment.city}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+        <div className="mt-4 rounded-xl bg-indigo-50 px-4 py-3">
+          <p className="font-semibold text-indigo-900">{roleHeading}</p>
+          <p className="mt-1 text-xs leading-5 text-indigo-800/80">
+            {previewRole === "main"
+              ? "Oversees all states, state admins, city admins, and platform activity."
+              : previewRole === "state"
+                ? "Oversees this state, its cities, city admins, and state-level activity."
+                : "Oversees this city’s members, verifications, events, welfare requests, and other operations."}
+          </p>
+        </div>
+      </section>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        <MetricCard
+          label="States in scope"
+          value={visibleStates.length.toString()}
+          note={previewRole === "main" ? "Organization-wide view" : "Based on selected role"}
+          icon={MapPin}
+          tone="indigo"
+        />
+        <MetricCard
+          label="Cities in scope"
+          value={filteredAssignments.length.toString()}
+          note="Each city has one assigned admin"
+          icon={Building2}
+          tone="violet"
+        />
+        <MetricCard
+          label="New member applications"
+          value={totals.members.toString()}
+          note="Sample activity across visible cities"
+          icon={Users}
+          tone="amber"
+        />
+        <MetricCard
+          label="Pending verifications"
+          value={totals.verifications.toString()}
+          note="Sample identity review queue"
+          icon={ShieldCheck}
+          tone="sky"
+        />
+        <MetricCard
+          label="Upcoming events"
+          value={totals.events.toString()}
+          note="Sample events across visible cities"
+          icon={CalendarDays}
+          tone="emerald"
+        />
+      </div>
+
+      <div className="mb-6 grid gap-4 sm:grid-cols-2">
+        <MetricCard
+          label="Open welfare requests"
+          value={totals.welfare.toString()}
+          note="Sample requests needing attention"
+          icon={HandHeart}
+          tone="rose"
+        />
+        <MetricCard
+          label="Admins in hierarchy"
+          value={(stateAdmins.length + cityAdmins.length + 1).toString()}
+          note="One main admin, state admins, and city admins"
+          icon={UserCheck}
+          tone="emerald"
+        />
+      </div>
+
+      <section className="mb-6 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:p-5">
+        <div className="mb-5">
+          <h3 className="font-bold text-slate-900">State and city administrators</h3>
+          <p className="mt-1 text-sm text-slate-500">
+            Main Admin can assign State Admins. Main and State Admins can assign
+            one City Admin to each city.
+          </p>
+        </div>
+        <div className="space-y-4">
+          {visibleStates.map((state) => {
+            const stateAdminAssignment = stateAdminAssignments.find(
+              (item) => item.state === state
+            );
+            const stateAdmin = stateAdmins.find(
+              (item) => item.id === stateAdminAssignment?.adminId
+            );
+            const stateCities = filteredAssignments.filter(
+              (item) => item.state === state
+            );
+
+            return (
+              <article
+                key={state}
+                className="overflow-hidden rounded-xl border border-slate-200"
+              >
+                <div className="flex flex-col justify-between gap-3 bg-slate-50 p-4 sm:flex-row sm:items-center">
+                  <div>
+                    <p className="font-bold text-slate-900">{state}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {stateCities.length} {stateCities.length === 1 ? "city" : "cities"} in view
+                    </p>
+                  </div>
+                  {previewRole === "main" ? (
+                    <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600 sm:min-w-72">
+                      State Admin
+                      <select
+                        value={stateAdminAssignment?.adminId ?? ""}
+                        onChange={(event) =>
+                          updateStateAdmin(state, event.target.value)
+                        }
+                        className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal text-slate-700"
+                      >
+                        {stateAdmins.map((admin) => (
+                          <option key={admin.id} value={admin.id}>
+                            {admin.name} · {admin.email}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                  ) : (
+                    <div className="text-sm">
+                      <p className="text-xs font-semibold text-slate-500">State Admin</p>
+                      <p className="mt-1 font-semibold text-slate-800">
+                        {stateAdmin?.name ?? "Not assigned"}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <div className="divide-y divide-slate-100">
+                  {stateCities.map((assignment) => {
+                    const cityAdmin = cityAdmins.find(
+                      (item) => item.id === assignment.adminId
+                    );
+
+                    return (
+                      <div
+                        key={assignment.id}
+                        className="grid gap-4 p-4 lg:grid-cols-[minmax(120px,0.7fr)_minmax(230px,1.3fr)_1fr]"
+                      >
+                        <div>
+                          <p className="text-sm font-bold text-slate-800">
+                            {assignment.city}
+                          </p>
+                          <p className="mt-1 text-xs text-slate-400">{assignment.id}</p>
+                        </div>
+                        <div>
+                          {previewRole === "city" ? (
+                            <>
+                              <p className="text-xs font-semibold text-slate-500">City Admin</p>
+                              <p className="mt-1 text-sm font-semibold text-slate-800">
+                                {cityAdmin?.name}
+                              </p>
+                              <p className="mt-1 text-xs text-slate-500">
+                                {cityAdmin?.email}
+                              </p>
+                            </>
+                          ) : (
+                            <label className="flex flex-col gap-1 text-xs font-semibold text-slate-600">
+                              City Admin
+                              <select
+                                value={assignment.adminId}
+                                onChange={(event) =>
+                                  updateCityAdmin(assignment.id, event.target.value)
+                                }
+                                className="rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-sm font-normal text-slate-700"
+                              >
+                                {cityAdmins.map((admin) => (
+                                  <option key={admin.id} value={admin.id}>
+                                    {admin.name} · {admin.email}
+                                  </option>
+                                ))}
+                              </select>
+                            </label>
+                          )}
+                        </div>
+                        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                          {[
+                            ["New members", assignment.activity.members],
+                            ["Verifications", assignment.activity.verifications],
+                            ["Events", assignment.activity.events],
+                            ["Welfare", assignment.activity.welfare],
+                          ].map(([label, count]) => (
+                            <div key={label} className="rounded-lg bg-slate-50 px-3 py-2">
+                              <p className="text-[10px] text-slate-500">{label}</p>
+                              <p className="mt-1 text-sm font-bold text-slate-800">{count}</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+        <div className="border-b border-slate-100 p-4 sm:p-5">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-end">
+            <div>
+              <h3 className="font-bold text-slate-900">Management areas</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Admin work areas shown for the selected scope.
+              </p>
+            </div>
+            <label className="relative block sm:w-80">
+              <Search
+                size={18}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"
+              />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Search city, state, or admin..."
+                aria-label="Search visible cities and admins"
+                className="w-full rounded-xl border border-slate-200 bg-slate-50 py-3 pl-10 pr-4 text-sm outline-none focus:border-indigo-400 focus:bg-white focus:ring-4 focus:ring-indigo-50"
+              />
+            </label>
+          </div>
+          <p className="mt-4 text-xs text-slate-500">
+            Showing activity for {filteredAssignments.length} of {visibleAssignments.length} cities in this role’s scope
+          </p>
+        </div>
+        <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+          {managementAreas.map(({ label, path, icon: Icon }) => (
+            <a
+              key={path}
+              href={path}
+              className="flex items-center gap-3 rounded-xl border border-slate-200 p-4 transition hover:border-indigo-200 hover:bg-indigo-50/50"
+            >
+              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
+                <Icon size={19} />
+              </span>
+              <span className="min-w-0 flex-1 text-sm font-semibold text-slate-800">
+                {label}
+              </span>
+              <ChevronRight size={17} className="text-slate-400" />
+            </a>
+          ))}
+        </div>
+        <div className="border-t border-slate-100 bg-slate-50/70 px-5 py-3">
+          <p className="text-xs leading-5 text-slate-500">
+            Activity counts and role previews are illustrative. Admin module
+            records are not yet filtered by role or location.
+          </p>
+        </div>
+      </section>
+
+      {notice && (
+        <div
+          role="status"
+          className="mt-5 flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50 p-4 text-sm text-indigo-800"
+        >
+          <CheckCircle2 size={18} />
+          <p>{notice}</p>
+          <button
+            type="button"
+            onClick={() => setNotice("")}
+            aria-label="Dismiss notice"
+            className="ml-auto text-indigo-500 hover:text-indigo-800"
+          >
+            <X size={17} />
+          </button>
+        </div>
+      )}
+    </AdminShell>
+  );
 }
 
 export function ReportsSettings() {
